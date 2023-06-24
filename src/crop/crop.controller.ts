@@ -1,19 +1,14 @@
-import {
-  BadRequestException,
-  Controller,
-  Post,
-  UploadedFile,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
+import { BadRequestException, Controller, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { CropService } from './crop.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
+import { Readable } from 'stream';
 
 @Controller('crop')
 export class CropController {
   constructor(private cropService: CropService) {}
+
   @UseGuards(AuthGuard)
   @Post()
   @UseInterceptors(FileInterceptor('video'))
@@ -26,6 +21,8 @@ export class CropController {
         `Only ${allowedExtensions.join(',')} files are allowed!`,
       );
     }
-    return this.cropService.cropVideo(file.buffer);
+
+    const stream = Readable.from(file.buffer);
+    return this.cropService.cropVideo(stream, extension);
   }
 }

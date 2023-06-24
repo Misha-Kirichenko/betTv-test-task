@@ -2,27 +2,50 @@ import { Injectable } from '@nestjs/common';
 import * as ffmpeg from 'fluent-ffmpeg';
 import { promises as fsPromises } from 'fs';
 import { join } from 'path';
+import { Readable } from 'stream';
+import * as fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class CropService {
-  async cropVideo(buffer: Buffer): Promise<void> {
+  async cropVideo(
+    stream: Readable,
+    extension: string,
+  ): Promise<{
+    firstPart: string;
+    secondPart: string;
+  }> {
     const uploadsDirectory = './uploads';
-    await fsPromises.mkdir(uploadsDirectory, { recursive: true }); // Create the uploads directory if it doesn't exist
+    await fsPromises.mkdir(uploadsDirectory);
 
-    const tempFilePath = join(uploadsDirectory, 'temp_video.mp4');
-    await fsPromises.writeFile(tempFilePath, buffer); // Write the buffer to a temporary file
+    const tempFilePath = join(uploadsDirectory, `temp-${uuidv4()}${extension}`);
+    const writeStream = fs.createWriteStream(tempFilePath);
 
-    const trimmedStartPath = join(uploadsDirectory, 'trimmed_start_video.mp4');
-    await this.trimVideo(tempFilePath, trimmedStartPath, 0, 300); // 300 seconds = 5 minutes
+    await new Promise<void>((resolve, reject) => {
+      stream
+        .pipe(writeStream)
+        .on('finish', () => resolve())
+        .on('error', (error) => reject(error));
+    });
 
     const duration = await this.getVideoDuration(tempFilePath);
-    const trimmedEndPath = join(uploadsDirectory, 'trimmed_end_video.mp4');
-    await this.trimVideo(tempFilePath, trimmedEndPath, duration - 300, duration);
+    const trimmedStartPath = join(uploadsDirectory, `${uuidv4()}${extension}`);
+    await this.trimVideo(tempFilePath, trimmedStartPath, 0, 300);
 
-    // Delete the temporary file
+    const trimmedEndPath = join(uploadsDirectory, `${uuidv4()}${extension}`);
+    await this.trimVideo(
+      tempFilePath,
+      trimmedEndPath,
+      duration - 300,
+      duration,
+    );
+
     await fsPromises.unlink(tempFilePath);
 
-    console.log('Video processed successfully');
+    return {
+      firstPart: trimmedStartPath,
+      secondPart: trimmedStartPath,
+    };
   }
 
   async trimVideo(
@@ -52,7 +75,7 @@ export class CropService {
         if (err) {
           reject(err);
         } else {
-          const duration = metadata.format.duration;
+          const { duration } = metadata.format;
           resolve(duration);
         }
       });
