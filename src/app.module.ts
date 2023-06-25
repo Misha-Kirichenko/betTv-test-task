@@ -5,6 +5,8 @@ import { UserSeederService } from './auth/user.seeder.service';
 import { User, UserSchema } from './auth/user.model';
 import { CropModule } from './crop/crop.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -12,13 +14,18 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        uri: configService.get('MONGO_PATH'),
+        uri: `mongodb://${configService.get('HOST')}:${configService.get(
+          'MONGO_PORT',
+        )}/${configService.get('MONGO_DB')}`,
       }),
       inject: [ConfigService],
     }),
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     AuthModule,
     CropModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', `/${process.env.UPLOADS_DIR}`),
+    }),
   ],
   providers: [UserSeederService],
 })

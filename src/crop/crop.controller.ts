@@ -1,9 +1,9 @@
 import { BadRequestException, Controller, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
-import { AuthGuard } from 'src/auth/auth.guard';
-import { CropService } from './crop.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
 import { Readable } from 'stream';
+import { AuthGuard } from 'src/auth/auth.guard';
+import { CropService } from './crop.service';
 
 @Controller('crop')
 export class CropController {

@@ -15,10 +15,14 @@ export class CropService {
     firstPart: string;
     secondPart: string;
   }> {
-    const uploadsDirectory = './uploads';
-    await fsPromises.mkdir(uploadsDirectory);
+    await fsPromises.mkdir(`${process.env.UPLOADS_DIR}/videos`, {
+      recursive: true,
+    });
 
-    const tempFilePath = join(uploadsDirectory, `temp-${uuidv4()}${extension}`);
+    const tempFilePath = join(
+      `${process.env.UPLOADS_DIR}/videos`,
+      `temp-${uuidv4()}${extension}`,
+    );
     const writeStream = fs.createWriteStream(tempFilePath);
 
     await new Promise<void>((resolve, reject) => {
@@ -29,10 +33,18 @@ export class CropService {
     });
 
     const duration = await this.getVideoDuration(tempFilePath);
-    const trimmedStartPath = join(uploadsDirectory, `${uuidv4()}${extension}`);
+    const startPartFile = `${uuidv4()}${extension}`;
+    const trimmedStartPath = join(
+      `./${process.env.UPLOADS_DIR}/videos`,
+      startPartFile,
+    );
     await this.trimVideo(tempFilePath, trimmedStartPath, 0, 300);
 
-    const trimmedEndPath = join(uploadsDirectory, `${uuidv4()}${extension}`);
+    const endPartFile = `${uuidv4()}${extension}`;
+    const trimmedEndPath = join(
+      `./${process.env.UPLOADS_DIR}/videos`,
+      endPartFile,
+    );
     await this.trimVideo(
       tempFilePath,
       trimmedEndPath,
@@ -43,8 +55,8 @@ export class CropService {
     await fsPromises.unlink(tempFilePath);
 
     return {
-      firstPart: trimmedStartPath,
-      secondPart: trimmedStartPath,
+      firstPart: `${process.env.HOST}:${process.env.PORT}/videos/${startPartFile}`,
+      secondPart: `${process.env.HOST}:${process.env.PORT}/videos/${endPartFile}`,
     };
   }
 
