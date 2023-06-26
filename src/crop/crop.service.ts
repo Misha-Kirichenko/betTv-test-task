@@ -17,11 +17,17 @@ export class CropService {
     @InjectModel(Video.name) private videoModel: Model<VideoDocument>,
     private cacheService: CacheService,
   ) {}
+
   async cropVideo(
     stream: Readable,
     extension: string,
     origin: string,
   ): Promise<CropResult> {
+    let startPartFileUrl = '';
+    let endPartFileUrl = '';
+    const startPartFile = `${uuidv4()}${extension}`;
+    const endPartFile = `${uuidv4()}${extension}`;
+
     await fsPromises.mkdir(`${process.env.UPLOADS_DIR}/videos`, {
       recursive: true,
     });
@@ -40,40 +46,57 @@ export class CropService {
     });
 
     const duration = await this.getVideoDuration(tempFilePath);
-    const startPartFile = `${uuidv4()}${extension}`;
-    const trimmedStartPath = join(
-      `./${process.env.UPLOADS_DIR}/videos`,
+    const outputStartPath = join(
+      `${process.env.UPLOADS_DIR}/videos`,
       startPartFile,
     );
-    await this.trimVideo(tempFilePath, trimmedStartPath, 0, 300);
 
-    const endPartFile = `${uuidv4()}${extension}`;
-    const trimmedEndPath = join(
-      `./${process.env.UPLOADS_DIR}/videos`,
-      endPartFile,
-    );
-    await this.trimVideo(
-      tempFilePath,
-      trimmedEndPath,
-      duration - 300,
-      duration,
-    );
-    await this.cacheService.addVideo({
-      name: endPartFile,
-      origin,
-      type: extension,
-    });
+    // if duration is less than 300, there's no need to crop video
+    if (duration <= 300) {
+      await fsPromises.rename(tempFilePath, outputStartPath);
+      startPartFileUrl = `${process.env.HOST}:${process.env.PORT}/videos/${startPartFile}`;
 
-    await fsPromises.unlink(tempFilePath);
+      await this.videoModel.create({
+        name: startPartFile,
+        origin,
+        type: extension,
+      });
+    } else {
+      startPartFileUrl = `${process.env.HOST}:${process.env.PORT}/videos/${startPartFile}`;
+      endPartFileUrl = `${process.env.HOST}:${process.env.PORT}/videos/${endPartFile}`;
 
-    const startPartFileUrl = `/videos/${startPartFile}`;
-    const endPartFileUrl = `/videos/${endPartFile}`;
+      const trimmedStartPath = join(
+        `./${process.env.UPLOADS_DIR}/videos`,
+        startPartFile,
+      );
+      await this.trimVideo(tempFilePath, trimmedStartPath, 0, 300);
+      await this.videoModel.create({
+        name: startPartFile,
+        origin,
+        type: extension,
+      });
 
-    await this.videoModel.create({
-      name: startPartFile,
-      origin,
-      type: extension,
-    });
+      const trimmedEndPath = join(
+        `./${process.env.UPLOADS_DIR}/videos`,
+        endPartFile,
+      );
+      await this.trimVideo(
+        tempFilePath,
+        trimmedEndPath,
+        duration - 300,
+        duration,
+      );
+
+      await this.cacheService.addVideo({
+        name: endPartFile,
+        origin,
+        type: extension,
+      });
+
+      /*unlink only if both parts present because 
+      in case of one part we just rename temp file*/
+      await fsPromises.unlink(tempFilePath);
+    }
 
     return {
       startPartFileUrl,
