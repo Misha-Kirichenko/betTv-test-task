@@ -5,15 +5,22 @@ import { join } from 'path';
 import { Readable } from 'stream';
 import * as fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import { Video, VideoDocument } from './video.model';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class CropService {
+  constructor(
+    @InjectModel(Video.name) private videoModel: Model<VideoDocument>,
+  ) {}
   async cropVideo(
     stream: Readable,
     extension: string,
+    origin: string
   ): Promise<{
-    firstPart: string;
-    secondPart: string;
+    startPartFileUrl: string;
+    endPartFileUrl: string;
   }> {
     await fsPromises.mkdir(`${process.env.UPLOADS_DIR}/videos`, {
       recursive: true,
@@ -53,10 +60,19 @@ export class CropService {
     );
 
     await fsPromises.unlink(tempFilePath);
+    
+    const startPartFileUrl = `/videos/${startPartFile}`;
+    const endPartFileUrl = `/videos/${endPartFile}`;
 
+    await this.videoModel.create({
+      name: startPartFile,
+      origin,
+      type: extension,
+    });
+    
     return {
-      firstPart: `${process.env.HOST}:${process.env.PORT}/videos/${startPartFile}`,
-      secondPart: `${process.env.HOST}:${process.env.PORT}/videos/${endPartFile}`,
+      startPartFileUrl,
+      endPartFileUrl,
     };
   }
 

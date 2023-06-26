@@ -23,6 +23,6 @@ export class CropController {
     }
 
     const stream = Readable.from(file.buffer);
-    return this.cropService.cropVideo(stream, extension);
+    return this.cropService.cropVideo(stream, extension, file.originalname);
   }
 }
