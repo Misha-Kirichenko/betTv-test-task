@@ -7,6 +7,9 @@ import { CropModule } from './crop/crop.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { AppController } from './app.controller';
+import { JwtService } from '@nestjs/jwt';
+import { CacheService } from './common/services/cache.service';
 
 @Module({
   imports: [
@@ -29,6 +32,7 @@ import { join } from 'path';
       rootPath: join(__dirname, '..', `/${process.env.UPLOADS_DIR}`),
     }),
   ],
-  providers: [UserSeederService],
+  controllers: [AppController],
+  providers: [UserSeederService, JwtService, CacheService],
 })
 export class AppModule {}

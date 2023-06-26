@@ -5,6 +5,7 @@ import { CropController } from './crop.controller';
 import { CropService } from './crop.service';
 import { Video, VideoSchema } from './video.model';
 import { MongooseModule } from '@nestjs/mongoose';
+import { CacheService } from '../common/services/cache.service';
 
 @Module({
   imports: [
@@ -19,6 +20,6 @@ import { MongooseModule } from '@nestjs/mongoose';
     }),
   ],
   controllers: [CropController],
-  providers: [CropService],
+  providers: [CropService, CacheService],
 })
 export class CropModule {}
